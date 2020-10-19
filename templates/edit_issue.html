@@ -1,0 +1,80 @@
+{% extends 'base_dashboard.html' %}
+
+{% load rest_framework %}
+{% load bootstrap4 %}
+{% load custom_tags %}
+
+{% block content %}
+    <style>
+        #id_description {
+            height: 100% !important;
+        }
+        input[type="checkbox"] {
+            vertical-align: middle;
+        }
+        .span12.pagination-centered {
+            margin: 37px auto;
+        }
+    </style>
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">
+            {% for err in form.non_field_errors %}
+                <p class="form-error">{{ err }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <div class="card">
+        <div class="card-body">
+            <form action="" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="number" value="{% if number %}{{ number }}{% else %}{{ form.number.value }}{% endif %}">
+                <div class="row">
+                    <div class="col d-flex flex-column">
+                        {% bootstrap_field form.name %}
+                        {% bootstrap_field form.description %}
+                    </div>
+
+                    <div class="col">
+                        {% bootstrap_field form.board %}
+                        <div class="row">
+                            <div class="col">{% bootstrap_field form.assignee %}</div>
+                            <div class="col">
+                                <div class="span12 pagination-centered">
+                                    {% bootstrap_field form.private %}
+                                </div>
+                            </div>
+                        </div>
+                        {% bootstrap_field form.order %}
+                        {% bootstrap_field form.labels %}
+                        {% bootstrap_field form.expiration_date %}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+            </form>
+        </div>
+    </div>
+
+{% endblock content %}
+
+{% block js %}
+    {{ block.super }}
+    <script>
+        $(document).ready(function () {
+            let textField = $('#id_description')
+            textField.addClass('flex-grow-1')
+            textField.parent().addClass('flex-grow-1 d-flex flex-column')
+            console.log(textField.parent())
+        })
+    </script>
+{% endblock js %}
+
+<div class="col-12 col-sm-12 col-md-12 col-lg-6 col-xl-6 d-flex flex-column">
+    <div class="form-group flex-grow-1 d-flex flex-column">
+        <label for="exampleFormControlTextarea1">Treść wiadomości</label>
+        <textarea class="form-control flex-grow-1" id="exampleFormControlTextarea1"></textarea>
+    </div>
+</div>

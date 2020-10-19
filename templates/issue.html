@@ -1,0 +1,47 @@
+{% extends 'base_dashboard.html' %}
+{% load bootstrap4 %}
+{% load static %}
+{% load custom_tags %}
+
+{% block style %}
+    <link rel="stylesheet" href="{% static "css/dashboard.css" %}">
+{% endblock style %}
+
+{% block content %}
+    {% if issue %}
+        <div class="card">
+            <div class="card-header">
+                <h5>{{ issue.name }}</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    {% for label in issue.labels.all %}
+                        <span class="badge badge-pill"
+                              style="background-color: {{ label.color }}; color: white">{{ label.name }}</span>
+                    {% endfor %}
+                </p>
+                {% if issue.expiration_date %}
+                    <h5>Сделать к: {{ issue.expiration_date }}</h5>
+                {% endif %}
+
+                {% if issue.assigner %}
+                    <h5>Назначил(а): {{ issue.assigner }}</h5>
+                {% endif %}
+
+                {% if issue.order %}
+                    <h5>Заявка: {{ issue.order }}</h5>
+                {% endif %}
+
+                <h5>Описание:</h5>
+                <p>
+                    {{ issue.description }}
+                </p>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center"><h5>Задача не найдена</h5></div>
+        </div>
+    {% endif %}
+{% endblock content %}
+
