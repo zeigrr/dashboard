@@ -1,0 +1,152 @@
+{% extends 'base_dashboard.html' %}
+{% load bootstrap4 %}
+{% load static %}
+{% load custom_tags %}
+
+{% block style %}
+    <link rel="stylesheet" href="{% static "css/dashboard.css" %}">
+{% endblock style %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col col-6">
+                    <a href="{% url 'dashboard:create_issue' %}" class="btn btn-outline-success"><i
+                            class="fas fa-plus"></i> Новая задача</a>
+                    <a href="{% url 'dashboard:create_board' %}" class="btn btn-outline-success"><i
+                            class="fas fa-plus"></i> Новая доска</a>
+                    <a href="{% url 'dashboard:list_issues' request.user.id %}" class="btn btn-outline-info"><i class="fas fa-meh-rolling-eyes"></i> Назначеные мне</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for board in boards %}
+            <div class="col">
+                <div class="card">
+                    <div class="card-header dashboard-card-header">
+                        <p>
+                            <strong class="float-left">
+                                {{ board.name }}
+                            </strong>
+                            <span class="float-right">
+                                <a href="{% url 'dashboard:update_board' board.id %}">
+                                    <i class="fas fa-edit"></i></a>
+                            </span>
+                        </p>
+                    </div>
+                    <div class="card-body dashboard-card-body board-card-body overflow-auto" style="max-height: 400px;">
+                        <ul id="sortable_{{ board.id }}" class="sortable connectedSortable"
+                            data-board_id="{{ board.id }}">
+                            <br/>
+                            {% for issue in board.limited_issues %}
+                                <li class="ui-state-default" data-issue_id="{{ issue.id }}"
+                                    data-issue_number="{{ issue.number }}">
+                                    <div class="card">
+                                        <div class="card-body dashboard-card-body issue-card-body">
+                                            <p class="card-text">
+                                                <span class="float-left">
+                                                    <a href="{% url 'dashboard:detail_issue' issue.id %}">{{ issue.name }}</a>
+                                                </span>
+                                                <span class="float-right">
+                                                    <a href="{% url 'dashboard:update_issue' issue.id %}"><i
+                                                            class="fas fa-edit"></i></a>
+                                                </span>
+                                            </p>
+                                            <br/>
+                                            <p class="card-text">
+                                                {% for label in issue.labels.all %}
+                                                    <span class="badge badge-pill" style="background-color: {{ label.color }}; color: white">{{ label }}</span>
+                                                {% endfor %}
+                                            </p>
+                                            <p class="card-text text-right">
+                                                <span>
+                                                    {{ issue.assignee.username|default:"Не назначена" }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <div class="card-text text-center">
+                            <a href="#"
+                               onclick="more_issues(event)"
+                               data-board_id="{{ board.id }}"
+                               data-last_issue="{{ board.last_issue }}"
+                               class="btn btn-outline-dark"><i
+                                    class="fas fa-arrow-down"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock content %}
+
+{% block js %}
+    {{ block.super }}
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+        $(function () {
+            $("ul.sortable").sortable({
+                connectWith: ".connectedSortable",
+                update: function f(event, ui) {
+                    let boardId = $(event.target).data('board_id')
+                    let issuesList = $(event.target).children('li')
+                    let ids = []
+                    let numbers = []
+                    let issuesUpdateData = []
+                    $.each(issuesList, function (index, issue) {
+                        ids.push($(issue).data('issue_id'))
+                        numbers.push($(issue).data('issue_number'))
+                    })
+                    if (numbers.length !== 0) {
+                        let maxNumber = Math.max.apply(null, numbers)
+                        let newNumbers = []
+                        for (let i = maxNumber; i >= maxNumber - (numbers.length - 1); i--) {
+                            newNumbers.push(i)
+                        }
+                        for (let i = 0; i <= numbers.length - 1; i++) {
+                            issuesUpdateData.push({'issue_id': ids[i], 'number': newNumbers[i]})
+                        }
+                        let data = {
+                            'csrfmiddlewaretoken': '{{csrf_token}}',
+                            'board_id': boardId,
+                            'issues': JSON.stringify(issuesUpdateData)
+                        }
+                        $.post('{% url "dashboard:update_issue_order" %}', data)
+                    }
+                }
+            }).disableSelection();
+        });
+    </script>
+    <script>
+        $(document).ready(function () {
+            more_issues = function (e) {
+                let target = $(e.target)
+                if (target.is("i")) {
+                    target = target.parent()
+                }
+                let boardId = target.data('board_id')
+                let boardLastIssue = target.data('last_issue')
+                let data = {'board_id': boardId, 'board_last_issue': boardLastIssue}
+                e.preventDefault();
+                $.get('{% url "dashboard:load_issues" %}', data, function (response) {
+                    let issues = response.issues
+                    $.each(issues, function (index, issue) {
+                        target.data('last_issue', issue.number)
+                        $(`#sortable_${data['board_id']}`).append(`<li class="ui-state-default ui-sortable-handle" data-issue_id="${issue.id}" data-issue_number="${issue.number}"><div class="card"><div class="card-body dashboard-card-body issue-card-body"><p><span class="float-left"><a href="/dashboard/detail_issue/${issue.id}">${issue.name}</a></span><span class="float-right"><a href="/dashboard/update_issue/${issue.id}"><i class="fas fa-edit"></i></a></span></p><br/><p class="labels"></p><p class="card-text text-right"><span>${issue.assignee.username}</span></p></div></div></li>`)
+                        let labels = $(`#sortable_${data['board_id']}`).find('.labels')
+                        $.each(issue.labels, function (index, label){
+                            labels.append(` <span class="badge badge-pill" style="background-color: ${label.color}; color: white">${label.name}</span>`)
+                        })
+                        labels.removeClass('labels').addClass('card-text')
+                    })
+                });
+            }
+        })
+    </script>
+{% endblock js %}
